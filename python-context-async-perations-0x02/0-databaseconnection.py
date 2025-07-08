@@ -23,7 +23,7 @@ class DatabaseConnection:
 
 # ==== Usage ====
 
-with DatabaseConnection('example.db') as cursor:
+with DatabaseConnection('Alx_prodev.db') as cursor:
     cursor.execute("SELECT * FROM users")
     results = cursor.fetchall()
     for row in results:
