@@ -12,7 +12,7 @@ def with_db_connection(func):
             conn.commit()
             return result
         except Exception as e:
-            print(f"An error occurred: {e}")
+            print(f"[LOG] An error occurred: {e}")
             conn.rollback()
         finally:
             conn.close() # Close the connection
