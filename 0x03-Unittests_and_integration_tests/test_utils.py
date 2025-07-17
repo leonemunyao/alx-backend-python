@@ -3,6 +3,8 @@
 
 import unittest
 from parameterized import parameterized
+from unittest.mock import patch, Mock
+from utils import get_json
 from utils import access_nested_map
 
 
@@ -29,3 +31,30 @@ class TestAccessNestedMap(unittest.TestCase):
             access_nested_map(nested_map, path)
         # The exception message should be the problematic key
         self.assertEqual(str(context.exception), repr(expected_key))
+
+
+class TestGetJson(unittest.TestCase):
+    """Test class for get_json function"""
+
+    @parameterized.expand([
+        ("http://example.com", {"payload": True}),
+        ("http://holberton.io", {"payload": False}),
+    ])
+    def test_get_json(self, test_url, test_payload, mock_get):
+        """Test get_json function with mocked requests.get"""
+        # mock_get is the fake requests.get function
+        # Create a mock response object
+        mock_response = Mock()
+        mock_response.json.return_value = test_payload
+
+        # Make mock_get return this mock response
+        mock_get.return_value = mock_response
+
+        # Call the actual get_json function
+        result = get_json(test_url)
+
+        # Verify requests.get was called exactly once with the right URL
+        mock_get.assert_called_once_with(test_url)
+
+        # Verify the result equals the expected payload
+        self.assertEqual(result, test_payload)
