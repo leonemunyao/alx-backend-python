@@ -18,3 +18,14 @@ class TestAccessNestedMap(unittest.TestCase):
         """Test method to receive parameters from the decorator."""
         result = access_nested_map(nested_map, path)
         self.assertEqual(result, expected)
+
+    @parameterized.expand([
+        ({}, ("a",), "a"),
+        ({"a": 1}, ("a", "b"), "b"),
+    ])
+    def test_access_nested_map_exception(self, nested_map, path, expected_key):
+        """Test that a KeyError is raised for invalid paths."""
+        with self.assertRaises(KeyError) as context:
+            access_nested_map(nested_map, path)
+        # The exception message should be the problematic key
+        self.assertEqual(str(context.exception), repr(expected_key))
