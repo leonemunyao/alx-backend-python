@@ -9,8 +9,7 @@ from unittest.mock import patch, Mock
 
 class TestGithubOrgClient(unittest.TestCase):
     """Test class for GithubOrgClient. The org method should
-    call get_json with a formatted URL. Verify that get_json is
-    called with the correct URL."""
+    call get_json with a formatted URL."""
 
     @parameterized.expand([
         ("google",),
