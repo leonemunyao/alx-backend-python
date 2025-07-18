@@ -7,10 +7,11 @@ class User(AbstractUser):
     """
     Custom user model that extends the default Django user model.
     """
-    phone_number = models.CharField(max_length=15, unique=True, null=True, blank=True)
-    date_joined = models.DateTimeField(default=timezone.now)
-    last_login = models.DateTimeField(null=True, blank=True)
-    email = models.EmailField(unique=True)
+
+    first_name = models.CharField(max_length=30)
+    last_name = models.CharField(max_length=30)
+    password = models.CharField(max_length=128)
+    primary_key = models.AutoField(primary_key=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -20,21 +21,28 @@ class User(AbstractUser):
 
 class Conversation(models.Model):
     """
-    Model representing a conversation between users.
+    Model representing a conversation between users
+    Must contain the conversation ID.
     """
-    participants = models.ManyToManyField(User, related_name='conversations')
+    conversation_id = models.AutoField(primary_key=True)
+    participants = models.ManyToManyField(User, related_name="conversations")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Conversation {self.id} with {self.participants.count()} participants"
+        return f"Conversation {self.conversation_id} with {self.participants.count()} participants"
+
 
 class Message(models.Model):
     """Message model containing the sender, conversations."""
-    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='messages')
-    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='messages')
-    content = models.TextField()
-    timestamp = models.DateTimeField(auto_now_add=True)
+
+    message_id = models.AutoField(primary_key=True)
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name="messages")
+    conversation = models.ForeignKey(
+        Conversation, on_delete=models.CASCADE, related_name="messages"
+    )
+    message_body = models.TextField()
+    sent_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Message {self.id} from {self.sender.username} in Conversation {self.conversation.id}"
+        return f"Message {self.message_id} from {self.sender.username} in Conversation {self.conversation.id}"
