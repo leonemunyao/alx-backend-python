@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework.authtoken',
+    'chats',
 ]
 
 MIDDLEWARE = [
@@ -143,3 +144,6 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.BrowsableAPIRenderer',
     ],
 }
+
+# Custom user model
+AUTH_USER_MODEL = 'chats.User'
