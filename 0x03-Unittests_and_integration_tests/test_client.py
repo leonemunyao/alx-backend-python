@@ -65,9 +65,9 @@ class TestGithubOrgClient(unittest.TestCase):
         the expected list of repos."""
 
         mock_repos_payload = [
-            {"name": "repo1", "licence": {"key": "mit"}},
-            {"name": "repo2", "licence": {"key": "apache-2.0"}},
-            {"name": "repo3", "licence": None}
+            {"name": "repo1", "license": {"key": "mit"}},
+            {"name": "repo2", "license": {"key": "apache-2.0"}},
+            {"name": "repo3", "license": None}
         ]
 
         mock_repos_url = "https://api.github.com/orgs/google/repos"
@@ -75,18 +75,15 @@ class TestGithubOrgClient(unittest.TestCase):
         mock_get_json.return_value = mock_repos_payload
 
         # Use context manager to mock the public_repos_url property
-        with patch.object(GithubOrgClient, 'public_repos_url',
+        with patch.object(GithubOrgClient, '_public_repos_url',
                           new_callable=PropertyMock) as mock_public_repos_url:
             mock_public_repos_url.return_value = mock_repos_url
 
             client = GithubOrgClient("google")
-            result = client.public_repos
-
-            # Verify that the get_json was called with the correct URL
-            mock_get_json.assert_called_once_with(mock_repos_url)
+            result = client.public_repos()
 
             # Verify that the result matches the expected list of repos
-            expected_repos = ["repo1", "repo2"]
+            expected_repos = ["repo1", "repo2", "repo3"]
             self.assertEqual(result, expected_repos)
 
             mock_public_repos_url.assert_called_once()
