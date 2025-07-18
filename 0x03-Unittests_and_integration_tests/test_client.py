@@ -2,9 +2,11 @@
 """Tests cases for the client module"""
 
 import unittest
+import requests
 from parameterized import parameterized, parameterized_class
 from client import GithubOrgClient
 from unittest.mock import patch, Mock, PropertyMock
+from fixtures import TEST_PAY
 
 
 class TestGithubOrgClient(unittest.TestCase):
@@ -100,42 +102,32 @@ class TestGithubOrgClient(unittest.TestCase):
         result = GithubOrgClient.has_license(repo, license_key)
         self.assertEqual(result, expected)
 
-    # Define test payload for parameterized tests
-    TEST_PAYLOAD = [
-        {
-            'org_payload': {'login': 'google'},
-            'repos_payload': [{'name': 'repo1'}, {'name': 'repo2'}],
-            'expected_repos': ['repo1', 'repo2'],
-            'apache2_repos': []
-        }
-    ]
+@parameterized_class([
+    "org_payload", "repos_payload", "expected_repos", "apache2_repos"
+    ], TEST_PAYLOAD)
+class TestIntergrationGithubOrgClient(unittest.TestCase):
+    """Integration test for GithubOrgClient."""
 
-    @parameterized_class([
-        "org_payload", "repos_payload", "expected_repos", "apache2_repos"
-        ], TEST_PAYLOAD)
-    class TestIntergrationGithubOrgClient(unittest.TestCase):
-        """Integration test for GithubOrgClient."""
+    @classmethod
+    def setUpClass(cls):
+        """Set up class-level fixtures for intergration tests"""
+        cls.get_patcher = patch("requests.get")
+        cls.mock_get = cls.get_patcher.start()
+        cls.mock_get.side_effect = cls.http_get_side_effect
 
-        @classmethod
-        def setUpClass(cls):
-            """Set up class-level fixtures for intergration tests"""
-            cls.get_patcher = patch("request.get")
-            cls.mock_get = cls.get_patcher.start()
-            cls.mock_get.side_effect = cls.http_get_side_effect
+    @classmethod
+    def tearDownClass(cls):
+        """Tear down class-level fixtures for integration tests"""
+        cls.get_patcher.stop()
 
-        @classmethod
-        def tearDownClass(cls):
-            """Tear down class-level fixtures for integration tests"""
-            cls.get_patcher.stop()
+    @classmethod
+    def http_get_side_effect(cls, url):
+        """Return appropriate mock response based on the URL."""
+        mock_response = Mock()
 
-        @classmethod
-        def http_get_side_effect(cls, url):
-            """Return appropriate mock response based on the URL."""
-            mock_response = Mock()
+        if url == "https://api.github.com/orgs/google":
+            mock_response.json.return_value = cls.org_payload
+        elif url == "https://api.github.com/orgs/google/repos":
+            mock_response.json.return_value = cls.repos_payload
 
-            if url == "https://api.github.com/orgs/google":
-                mock_response.json.return_value = cls.org_payload
-            elif url == "https://api.github.com/orgs/google/repos":
-                mock_response.json.return_value = cls.repos_payload
-
-            return mock_response
+        return mock_response
