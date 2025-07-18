@@ -27,7 +27,7 @@ class TestGithubOrgClient(unittest.TestCase):
         client = GithubOrgClient(org_name)
 
         # Call the org method
-        result = client.org()
+        result = client.org
 
         # Calculate what URL should have been called
         expected_url = f"https://api.github.com/orgs/{org_name}"
