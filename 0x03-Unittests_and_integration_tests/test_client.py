@@ -80,7 +80,7 @@ class TestGithubOrgClient(unittest.TestCase):
             mock_public_repos_url.return_value = mock_repos_url
 
             client = GithubOrgClient("google")
-            result = client.public_repos()
+            result = client.public_repos
 
             # Verify that the get_json was called with the correct URL
             mock_get_json.assert_called_once_with(mock_repos_url)
