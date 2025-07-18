@@ -112,7 +112,7 @@ class TestGithubOrgClient(unittest.TestCase):
 
     @parameterized_class([
         "org_payload", "repos_payload", "expected_repos", "apache2_repos"
-        ],TEST_PAYLOAD)
+        ], TEST_PAYLOAD)
     class TestIntergrationGithubOrgClient(unittest.TestCase):
         """Integration test for GithubOrgClient."""
 
@@ -127,7 +127,7 @@ class TestGithubOrgClient(unittest.TestCase):
         def tearDownClass(cls):
             """Tear down class-level fixtures for integration tests"""
             cls.get_patcher.stop()
-        
+
         @classmethod
         def http_get_side_effect(cls, url):
             """Return appropriate mock response based on the URL."""
@@ -137,5 +137,5 @@ class TestGithubOrgClient(unittest.TestCase):
                 mock_response.json.return_value = cls.org_payload
             elif url == "https://api.github.com/orgs/google/repos":
                 mock_response.json.return_value = cls.repos_payload
-            
+
             return mock_response
