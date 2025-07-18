@@ -6,7 +6,7 @@ import requests
 from parameterized import parameterized, parameterized_class
 from client import GithubOrgClient
 from unittest.mock import patch, Mock, PropertyMock
-from fixtures import TEST_PAY
+from fixtures import TEST_PAYLOAD
 
 
 class TestGithubOrgClient(unittest.TestCase):
@@ -105,12 +105,12 @@ class TestGithubOrgClient(unittest.TestCase):
 @parameterized_class([
     "org_payload", "repos_payload", "expected_repos", "apache2_repos"
     ], TEST_PAYLOAD)
-class TestIntergrationGithubOrgClient(unittest.TestCase):
+class TestIntegrationGithubOrgClient(unittest.TestCase):
     """Integration test for GithubOrgClient."""
 
     @classmethod
     def setUpClass(cls):
-        """Set up class-level fixtures for intergration tests"""
+        """Set up class-level fixtures for integration tests"""
         cls.get_patcher = patch("requests.get")
         cls.mock_get = cls.get_patcher.start()
         cls.mock_get.side_effect = cls.http_get_side_effect
