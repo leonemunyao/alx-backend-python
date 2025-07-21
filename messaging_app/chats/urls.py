@@ -27,9 +27,7 @@ conversations_router.register(
 urlpatterns = [
     path('', include(router.urls)),
     path('', include(conversations_router.urls)),
-    path('admin/', admin.site.urls),
-    path('api/token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('api/logout/', logout_view, name='logout'),
-    path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
+    path('token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('logout/', logout_view, name='logout'),
 ]

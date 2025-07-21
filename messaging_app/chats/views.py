@@ -59,7 +59,7 @@ class MessageViewSet(viewsets.ModelViewSet):
         if conversation_id:
             try:
                 conversation = Conversation.objects.get(id=conversation_id)
-                if self.request.user in conversation.participants.all():
+                if self.request.user not in conversation.participants.all():
                     return Response(
                         {"detail": "You are not a participant in this conversation."},
                         status=status.HTTP_403_FORBIDDEN

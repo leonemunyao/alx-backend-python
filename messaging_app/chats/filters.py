@@ -25,13 +25,13 @@ class MessageFilter(django_filters.FilterSet):
     )
 
     # Filter by date range
-    sender_after = django_filters.DateTimeFilter(
+    send_after = django_filters.DateTimeFilter(
         field_name='sent_at',
         lookup_expr='gte',
         help_text="Filter messages sent after this date"
     )
 
-    sender_before = django_filters.DateTimeFilter(
+    send_before = django_filters.DateTimeFilter(
         field_name='sent_at',
         lookup_expr='lte',
         help_text="Filter messages sent before this date"
@@ -53,7 +53,7 @@ class MessageFilter(django_filters.FilterSet):
 
     class Meta:
         model = Message
-        fields = ['sender', 'sender_username', 'sender_after', 'sender_before', 'content', 'conversation']
+        fields = ['sender', 'sender_username', 'send_after', 'send_before', 'content', 'conversation']
 
 
 class ConversationFilter(django_filters.FilterSet):
@@ -63,8 +63,8 @@ class ConversationFilter(django_filters.FilterSet):
     """
 
     # Filter conversations with a specific participant
-    participant_username = django_filters.ModelChoiceFilter(
-        queryset=User.object.all(),
+    participant = django_filters.ModelChoiceFilter(
+        queryset=User.objects.all(),
         field_name='participants',
         help_text="Filter conversations by participants ID"
     )

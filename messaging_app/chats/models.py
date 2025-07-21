@@ -12,6 +12,9 @@ class User(AbstractUser):
     user_id = models.UUIDField(
         default=uuid.uuid4, editable=False, unique=True, primary_key=True
     )
+    username = models.CharField(
+        max_length=150, unique=True, help_text="Unique username for login"
+    )
     first_name = models.CharField(max_length=30)
     last_name = models.CharField(max_length=30)
     password = models.CharField(max_length=128)

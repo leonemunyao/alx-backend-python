@@ -7,7 +7,7 @@ User = get_user_model()
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'email']
+        fields = ['user_id', 'username', 'email']
 
 class MessageSerializer(serializers.ModelSerializer):
     sender = UserSerializer(read_only=True)
@@ -15,11 +15,11 @@ class MessageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Message
-        fields = ['id', 'sender', 'content', 'timestamp', 'conversation']
-        read_only_fields = ['timestamp']
+        fields = ['message_id', 'sender', 'sender_name', 'message_body', 'sent_at', 'conversation']
+        read_only_fields = ['sent_at']
 
-    def validate_content(self, data):
-        if not data.get('content', '').strip():
+    def validate_message_body(self, data):
+        if not data.get('message_body', '').strip():
             raise serializers.ValidationError("Message content cannot be empty.")
         return data
 
@@ -31,7 +31,7 @@ class ConversationSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Conversation
-        fields = ['id', 'participants', 'messages', 'created_at', 'updated_at', 'participant_count', 'title']
+        fields = ['conversation_id', 'participants', 'messages', 'created_at', 'updated_at', 'participant_count', 'title']
         read_only_fields = ['created_at', 'updated_at']
 
     def get_participant_count(self, obj):
