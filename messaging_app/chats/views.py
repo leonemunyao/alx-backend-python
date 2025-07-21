@@ -1,20 +1,25 @@
 from rest_framework import viewsets, permissions, status, filters
 from .models import Conversation, Message
 from .serializers import ConversationSerializer, MessageSerializer
-from .permissions import IsOwnerOrReadOnly, IsParticipantReadOnly, IsMessageOwner
+from .permissions import IsParticipantOfConversation, IsMessageOwner
 
 
 class ConversationViewSet(viewsets.ModelViewSet):
     queryset = Conversation.objects.all()
     serializer_class = ConversationSerializer
-    permission_classes = [permissions.IsAuthenticated, IsParticipantReadOnly, IsOwnerOrReadOnly, 
-                          IsMessageOwner]
+    permission_classes = [permissions.IsAuthenticated, IsParticipantOfConversation]
     filter_backends = [filters.SearchFilter]
     search_fields = ['title']
 
     def get_queryset(self):
         # Only return conversations where the user is a participant.
         return Conversation.objects.filter(participants=self.request.user)
+    
+    def perform_create(self, serializer):
+        # When creating a conversarion, add the creater as a participant.
+        conversation = serializer.save()
+        conversation.participants.add(self.request.user)
+        conversation.save()
 
 
 class MessageViewSet(viewsets.ModelViewSet):
@@ -22,10 +27,11 @@ class MessageViewSet(viewsets.ModelViewSet):
     serializer_class = MessageSerializer 
     permission_classes = [permissions.IsAuthenticated, IsMessageOwner]
     filter_backends = [filters.OrderingFilter]
-    ordering_fields = ['timestamp']
+    ordering_fields = ['sent_at']
 
     def get_queryset(self):
         user_conversations = Conversation.objects.filter(participants=self.request.user)
+        
         if 'conversation_id' in self.kwargs:
             return Message.objects.filter(conversation_id=self.kwargs['conversation_id'],
                                           conversation__in=user_conversations)
