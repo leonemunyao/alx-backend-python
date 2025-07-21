@@ -42,11 +42,18 @@ class IsMessageOwner(permissions.BasePermission):
             return False
         
         # For read operations, any participant can access
-        if request.method in permissions.SAFE_METHODS:
+        if request.method in ['GET', 'HEAD', 'OPTIONS']:
             return True
-        
+
         # For write operations, only the message owner can access
-        return obj.sender == request.user
+        if request.method in ['PUT', 'PATCH', 'DELETE']:
+            return obj.sender == request.user
+        
+        # For POST operations, any participant can create.
+        if request.method == 'POST':
+            return True
+
+        return False
 
 
 class IsParticipantOfConversation(permissions.BasePermission):
@@ -60,10 +67,22 @@ class IsParticipantOfConversation(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         # Check if the user is a participant in the conversation
         if hasattr(obj, 'participants'):
-            return request.user in obj.participants.all()    
+            is_participant = request.user in obj.participants.all()
+        elif hasattr(obj, 'conversation'):
+            is_participant = request.user in obj.conversation.participants.all()
+        else:
+            return False
 
-        if hasattr(obj, 'conversation'):
-            return request.user in obj.conversation.participants.all()
+
+        if request.method in ['GET', 'HEAD', 'OPTIONS']:
+            return is_participant
+        elif request.method == 'POST':
+            # Allow participants to create messages in the conversation
+            return is_participant
         
-        return False
+        elif request.method in ['PUT', 'PATCH', 'DELETE']:
+            return is_participant
+        
+        else:
+            return False
     
