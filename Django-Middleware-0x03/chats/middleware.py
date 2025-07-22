@@ -2,6 +2,8 @@ import logging
 from datetime import datetime
 import os
 from django.conf import settings
+from django.http import JsonResponse
+from django.utils import timezone
 
 
 class RequestLoggingMiddleware:
@@ -47,3 +49,50 @@ class RequestLoggingMiddleware:
         response = self.get_response(request)
 
         return response
+    
+
+class RestrictAccessByTimeMiddleware:
+    """Middleware to restrict access to chat endpoint during certain hours."""
+
+    def __init__(self, get_response):
+        """Initialize  the middleware.
+        get_response is a callable that takes a request and returns a response.
+        """
+
+        self.get_response = get_response
+
+        # Define the restricted hours.
+        self.start_hour = 6  # 6 AM
+        self.end_hour = 21   # 9 PM
+
+        # Define which paths to be restricted
+        self.restricted_paths = [
+            '/api/conversations/',
+            '/api/messages/',
+            '/api/chats/',
+            ]
+
+    def __call__(self, request):
+        """Check if the request is within restricted hours and path."""
+
+        # Get the current server time
+        current_time = timezone.now()
+        current_hour = current_time.hour
+
+        # Check if the request path should be restricted
+        if self.should_restrict_path(request.path):
+            # Check if the current hour is within the restricted range
+            if self.start_hour <= current_hour < self.end_hour:
+                return JsonResponse(
+                    {'error': 'Access to this endpoint is restricted during this time.'},
+                    status=403
+                )
+        # If not restricted, proceed with the request
+        response = self.get_response(request)
+        return response
+    
+    def should_restrict_path(self, path):
+        """Check if the request path is in the restricted paths."""
+        return any(path.startswith(restricted_path) for restricted_path in self.restricted_paths)
+    
+
