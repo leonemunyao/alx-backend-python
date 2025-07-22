@@ -183,8 +183,8 @@ Desktop.ini
 *~
 
 # Logs
-*.log
-logs/
+# *.log
+# logs/
 
 # Database
 *.db
