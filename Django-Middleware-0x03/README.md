@@ -81,3 +81,27 @@ URL - `/api/conversations/`
 * **List User Conversations(GET)**
 URL - `/api/conversations/`
 Headers: `Authorization: Bearer {{access_token}}`
+
+---
+
+## Creating the Request Logging Middleware
+
+Implementing the `RequestLoggingMiddleware` class in `middleware.py`.
+
+Then configuring the Middleware in `settings.py` as follows....
+```python
+MIDDLEWARE = [
+    .....
+    'chats.middleware.RequestLoggingMiddleware',
+    .....
+]
+```
+
+**Understanding the Implementation**
+
+* `__int__` method takes get_response as a parameter, sets up logging configuration and creates a logger that writes to `requests.log`
+* `__call__` methos called every request, extracts user information, logs the timestamp, user and request path and continues processing the request by calling `get_reponse(request)`
+* Middleware order: Placed after `AuthenticationMiddleware` in the `settings.py` so we have access to `request.user`
+
+**Testing the Middleware**
+

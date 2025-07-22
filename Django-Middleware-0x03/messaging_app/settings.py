@@ -33,11 +33,11 @@ DEBUG = True
 ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
-    '3b34f6bc11b7.ngrok-free.app',  # My current ngrok URL
+    '824848824a23.ngrok-free.app',  # My current ngrok URL
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://3b34f6bc11b7.ngrok-free.app',
+    'https://824848824a23.ngrok-free.app',
     'http://localhost:8000',
     'http://127.0.0.1:8000',
 ]
@@ -65,6 +65,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     # 'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'chats.middleware.RequestLoggingMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
