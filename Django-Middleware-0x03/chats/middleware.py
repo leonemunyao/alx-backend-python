@@ -19,7 +19,7 @@ class RequestLoggingMiddleware:
         self.get_response = get_response
 
         # Setting up logging configuration
-        log_file_path = os.path.join(settings.BASE_DIR, 'chats', 'requests.log')
+        log_file_path = os.path.join(settings.BASE_DIR, 'requests.log')
 
         # Configure the logger
         self.logger = logging.getLogger('request_logger')
@@ -162,3 +162,62 @@ class OffensiveLanguageMiddleware:
             ip = request.META.get('REMOTE_ADDR')
         return ip
     
+
+class RolePermissionMiddleware:
+    """Middleware to enforce role-based permissions for specific actions."""
+
+    def __init__(self, get_response):
+        """Initialize the middleware with role permissions configuration."""
+
+        self.get_response = get_response
+
+        self.admin_only_paths = [
+            '/admin/',
+            '/api/admin/',
+        ]
+
+        self.elevated_permission_paths = [
+            '/api/conversations/',
+            '/api/messages/',
+            '/api/users/',
+        ]
+
+        self.public_paths = [
+            '/api/token/',
+            '/api/token/refresh/',
+            '/api/logout/',
+        ]
+
+        self.restricted_methods = ['POST', 'PUT', 'PATCH', 'DELETE']
+
+    def __call__(self, request):
+        """Check user role and enforece permissions based on the request path and method."""
+
+        user = request.user
+        path = request.path
+        method = request.method
+
+        # Check if the user is authenticated
+        if not user.is_authenticated:
+            if method in self.restricted_methods and not self.is_public_path(path):
+                return JsonResponse(
+                    {'error': 'Authentication required.'},
+                    status=401
+                )
+
+        # Check for admin-only paths
+        if self.is_admin_only_path(path) and not user.is_admin():
+            return JsonResponse(
+                {'error': 'Admin access required.'},
+                status=403
+            )
+
+        # Check for elevated permissions paths
+        if self.is_elevated_permission_path(path) and not user.has_elevated_permissions():
+            return JsonResponse(
+                {'error': 'Elevated permissions required.'},
+                status=403
+            )
+
+        response = self.get_response(request)
+        return response

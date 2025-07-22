@@ -9,6 +9,26 @@ class User(AbstractUser):
     Custom user model that extends the default Django user model.
     """
 
+    ROLE_CHOICES = [
+        ('admin', 'Admin'),
+        ('user', 'User'),
+    ]
+
+    role = models.CharField(
+        max_length=20,
+        choices=ROLE_CHOICES,
+        default='user',
+        help_text="Role of the user in the application"
+    )
+
+    def is_admin(self):
+        """Check if the user has admin role."""
+        return self.role == 'admin'
+    
+    def is_user(self):
+        """Check if the user has user role."""
+        return self.role == 'user'
+
     user_id = models.UUIDField(
         default=uuid.uuid4, editable=False, unique=True, primary_key=True
     )

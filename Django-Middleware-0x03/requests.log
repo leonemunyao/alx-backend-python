@@ -11,3 +11,6 @@
 2025-07-22 11:07:32,301 - 2025-07-22 11:07:32.301663 - User: Anonymous - Path: /admin/
 2025-07-22 11:07:32,337 - 2025-07-22 11:07:32.337329 - User: Anonymous - Path: /admin/login/
 2025-07-22 11:07:34,963 - 2025-07-22 11:07:34.962989 - User: Anonymous - Path: /admin/login/
+2025-07-22 14:52:50.107690 - User: testuser1 - Path: /
+2025-07-22 14:53:11.296632 - User: testuser1 - Path: /admin/
+2025-07-22 14:53:18.405586 - User: testuser1 - Path: /admin/logout/
