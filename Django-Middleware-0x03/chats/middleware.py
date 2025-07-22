@@ -4,6 +4,7 @@ import os
 from django.conf import settings
 from django.http import JsonResponse
 from django.utils import timezone
+from collections import defaultdict, deque
 
 
 class RequestLoggingMiddleware:
@@ -96,3 +97,68 @@ class RestrictAccessByTimeMiddleware:
         return any(path.startswith(restricted_path) for restricted_path in self.restricted_paths)
     
 
+class OffensiveLanguageMiddleware:
+    """Middleware to limit the number of chat messages a user can sent within a 
+    time window based on IP address."""
+
+    def __init__(self, get_response):
+        """Initialize the middleware with rate limiting configuration."""
+
+        self.get_response = get_response
+
+        # Rate limit configuration
+        self.rate_limit = 5  # Maximum number of requests allowed
+        self.time_window = 60  # Time window in seconds
+
+        # Dictionary to store request timestamps for each IP address
+        self.request_timestamps = defaultdict(deque)
+
+        # Define which paths to be rate limited
+        self.rate_limited_paths = [
+            '/api/messages/',
+            '/api/conversations/',
+            '/api/chats/',
+        ]
+
+    def __call__(self, request):
+        """Check if the request is within the rate limited based on 
+        the IP address and time window."""
+
+        # Only apply rate limiting to POST requests on specific paths
+        if request.method == 'POST' and self.should_rate_limit(request.path):
+            ip_address = self.get_client_ip(request)
+            current_time = timezone.now().timestamp()
+
+            # Clean up old timestamps
+            self.request_timestamps[ip_address] = deque(
+                [timestamp for timestamp in self.request_timestamps[ip_address]
+                 if current_time - timestamp < self.time_window]
+            )
+
+            # Check if the rate limit has been exceeded
+            if len(self.request_timestamps[ip_address]) >= self.rate_limit:
+                return JsonResponse(
+                    {'error': 'Rate limit exceeded. Please try again later.'},
+                    status=429
+                )
+
+            # Record the current request timestamp
+            self.request_timestamps[ip_address].append(current_time)
+        
+        response = self.get_response(request)
+        return response
+
+
+    def should_rate_limit(self, path):
+        """Check if the request path is in the rate limited paths."""
+        return any(path.startswith(rate_limited_path) for rate_limited_path in self.rate_limited_paths)
+    
+    def get_client_ip(self, request):
+        """Get the client's IP address from the request."""
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        return ip
+    
