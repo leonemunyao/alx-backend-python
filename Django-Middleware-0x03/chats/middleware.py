@@ -163,7 +163,7 @@ class OffensiveLanguageMiddleware:
         return ip
     
 
-class RolePermissionMiddleware:
+class RolepermissionMiddleware:
     """Middleware to enforce role-based permissions for specific actions."""
 
     def __init__(self, get_response):
