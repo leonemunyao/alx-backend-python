@@ -71,8 +71,8 @@ class Message(models.Model):
     conversation = models.ForeignKey(
         Conversation, on_delete=models.CASCADE, related_name="messages"
     )
-    message_body = models.TextField()
-    sent_at = models.DateTimeField(auto_now_add=True)
+    content = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         if self.receiver:
@@ -112,7 +112,7 @@ class Notification(models.Model):
     )
 
     title = models.CharField(max_length=255)
-    message_body = models.TextField()
+    content = models.TextField()
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -120,4 +120,4 @@ class Notification(models.Model):
         ordering = ['-created_at']
     
     def __str__(self):
-        return f"Notification for {self.user.username}: {self.title} - {self.message_body[:50]}..."
+        return f"Notification for {self.user.username}: {self.title} - {self.content[:50]}..."

@@ -25,7 +25,7 @@ class MessageNotificationSignalTest(TestCase):
             sender=self.sender,
             receiver=self.recipient,
             conversation=self.conversation,
-            message_body='Hello!'
+            content='Hello!'
         )
         notification = Notification.objects.filter(user=self.recipient, message=message).first()
         
