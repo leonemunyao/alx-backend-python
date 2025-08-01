@@ -411,7 +411,7 @@ def unread_messages_inbox(request):
     """
     # Get unread messages using custom manager with optimizations
     unread_messages = (
-        Message.unread.for_user(request.user)
+        Message.unread.unread_for_user(request.user)
         .only(
             "message_id",
             "content",
@@ -539,6 +539,6 @@ def unread_count(request):
     """
     View to get the count of unread messages for the current user.
     """
-    count = Message.unread.for_user(request.user).count()
+    count = Message.unread.unread_for_user(request.user).count()
 
     return JsonResponse({"unread_count": count})

@@ -68,7 +68,7 @@ class UnreadMessagesManagerTest(TestCase):
         )
 
         # Test custom manager
-        unread_messages = Message.unread.for_user(self.user2)
+        unread_messages = Message.unread.unread_for_user(self.user2)
 
         self.assertIn(unread_message, unread_messages)
         self.assertNotIn(read_message, unread_messages)
@@ -183,7 +183,7 @@ class UnreadMessagesManagerTest(TestCase):
             read=False,
         )
 
-        unread_messages = Message.unread.for_user(self.user1)
+        unread_messages = Message.unread.unread_for_user(self.user1)
 
         self.assertNotIn(self_message, unread_messages)
         self.assertEqual(unread_messages.count(), 0)
