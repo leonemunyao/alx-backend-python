@@ -7,6 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.utils import timezone
 from django.db.models import Prefetch
+from django.views.decorators.cache import cache_page
 from .models import Conversation, Message, MessageHistory, Conversation
 from .serializers import ConversationSerializer, MessageSerializer
 from .permissions import IsParticipantOfConversation, IsMessageOwner
@@ -201,6 +202,7 @@ def message_edit(request, message_id):
     return JsonResponse({"error": "Invalid request method."}, status=405)
 
 
+@cache_page(60)  # Cache for 60 seconds
 @login_required
 def threaded_conversation(request, conversation_id):
     """
@@ -316,6 +318,7 @@ def create_reply(request, message_id):
         return JsonResponse({"error": "Message does not exist."}, status=404)
 
 
+@cache_page(60)  # Cache for 60 seconds
 @login_required
 def message_thread(request, message_id):
     """
@@ -403,6 +406,7 @@ def delete_user(request):
     return JsonResponse({"error": "Invalid request method."}, status=405)
 
 
+@cache_page(60)  # Cache for 60 seconds
 @login_required
 def unread_messages_inbox(request):
     """
