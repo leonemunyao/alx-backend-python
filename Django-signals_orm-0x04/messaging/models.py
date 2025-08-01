@@ -66,20 +66,56 @@ class Message(models.Model):
     """Message model containing the sender, conversations."""
 
     message_id = models.AutoField(primary_key=True)
-    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name="messages")
-    receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name="received_messages", null=True, blank=True)
-    conversation = models.ForeignKey(
-        Conversation, on_delete=models.CASCADE, related_name="messages"
+    sender = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="messages"
     )
+    receiver = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="received_messages",
+        null=True,
+        blank=True
+    )
+    conversation = models.ForeignKey(
+        Conversation,
+        on_delete=models.CASCADE,
+        related_name="messages"
+    )
+
+    parent_message = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        related_name="replies",
+        null=True,
+        blank=True
+    )
+
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
     edited = models.BooleanField(default=False)
     edited_at = models.DateTimeField(null=True, blank=True)
 
+    class Meta:
+        ordering = ['timestamp']
+
     def __str__(self):
         if self.receiver:
             return f"Message {self.message_id} from {self.sender.username} to {self.receiver.username} in Conversation {self.conversation.id}"
         return f"Message {self.message_id} from {self.sender.username} in Conversation {self.conversation.id}"
+
+    @property
+    def is_reply(self):
+        """Check if the message is a reply to another message."""
+        return self.parent_message is not None
+
+    @property
+    def get_thread_root(self):
+        """Get the root message of the thread."""
+        if self.parent_message:
+            return self.parent_message.get_thread_root()
+        return self
 
 
 class MessageHistory(models.Model):

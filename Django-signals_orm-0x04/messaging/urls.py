@@ -34,6 +34,9 @@ urlpatterns = [
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('messages/<int:message_id>/edit/', views.message_edit, name='message_edit'),
     path('messages/<int:message_id>/history/', views.message_edit_history, name='message_edit_history'),
+    path('messages/<int:message_id>/reply/', views.create_reply, name='create_reply'),
+    path('messages/<int:message_id>/thread/', views.message_thread, name='message_thread'),
+    path('conversations/<int:conversation_id>/threaded/', views.threaded_conversation, name='threaded_conversation'),
     path('user/delete', views.delete_user, name='delete_user'),
     path('logout/', logout_view, name='logout'),
 ]
