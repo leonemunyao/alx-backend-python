@@ -2,7 +2,11 @@ from rest_framework import viewsets, permissions, status, filters
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Conversation, Message
+from django.shortcuts import render, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.utils import timezone
+from .models import Conversation, Message, MessageHistory, Conversation
 from .serializers import ConversationSerializer, MessageSerializer
 from .permissions import IsParticipantOfConversation, IsMessageOwner
 from .pagination import MessagePagination, ConversationPagination
@@ -102,3 +106,44 @@ class MessageViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
         return super().partial_update(request, *args, **kwargs)
+
+@login_required
+def message_edit_history(request, message_id):
+    """
+    View to retrieve the edit history of a specific message.
+    """
+    message = get_object_or_404(Message, id=message_id)
+    if request.user not in message.conversation.participants.all():
+        return JsonResponse({"error": "You are not a participant in this conversation."}, status=403)
+
+    history = MessageHistory.objects.filter(message=message).order_by('-edited_at')
+    history_data = [
+        {
+            'old_content': entry.old_content,
+            'edited_by': entry.edited_by.username,
+            'edited_at': entry.edited_at
+        } for entry in history
+    ]
+    return JsonResponse(history_data, safe=False)
+
+@login_required
+def message_edit(request, message_id):
+    """
+    View to edit a message.
+    """
+    
+    message = get_object_or_404(Message, id=message_id)
+    if message.sender != request.user:
+        return JsonResponse({"error": "You do not have permission to edit this message."}, status=403)
+
+    if request.method == 'POST':
+        new_content = request.POST.get('content')
+        if new_content:
+            message.content = new_content
+            message.edited = True
+            message.edited_at = timezone.now()
+            message.save()
+            return JsonResponse({"message": "Message updated successfully."}, status=200)
+        return JsonResponse({"error": "Content cannot be empty."}, status=400)
+
+    return JsonResponse({"error": "Invalid request method."}, status=405)

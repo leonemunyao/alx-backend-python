@@ -73,11 +73,40 @@ class Message(models.Model):
     )
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
+    edited = models.BooleanField(default=False)
+    edited_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         if self.receiver:
             return f"Message {self.message_id} from {self.sender.username} to {self.receiver.username} in Conversation {self.conversation.id}"
         return f"Message {self.message_id} from {self.sender.username} in Conversation {self.conversation.id}"
+
+
+class MessageHistory(models.Model):
+    """
+    Model to keep track of message edits.
+    """
+
+    message =  models.ForeignKey(
+        Message,
+        on_delete=models.CASCADE,
+        related_name="edit_history"
+    )
+    old_content = models.TextField()
+    edited_by = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="edited_messages"
+    )
+    edited_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-edited_at']
+        verbose_name = 'Message Edit History'
+        verbose_name_plural = 'Message Edit History'
+    
+    def __str__(self):
+        return f"Edit of Message {self.message.message_id} by {self.edited_by.username} at {self.edited_at}"
 
 
 
