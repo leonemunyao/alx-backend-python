@@ -34,5 +34,6 @@ urlpatterns = [
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('messages/<int:message_id>/edit/', views.message_edit, name='message_edit'),
     path('messages/<int:message_id>/history/', views.message_edit_history, name='message_edit_history'),
+    path('user/delete', views.delete_user, name='delete_user'),
     path('logout/', logout_view, name='logout'),
 ]

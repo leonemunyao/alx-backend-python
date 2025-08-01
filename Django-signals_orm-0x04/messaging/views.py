@@ -147,3 +147,14 @@ def message_edit(request, message_id):
         return JsonResponse({"error": "Content cannot be empty."}, status=400)
 
     return JsonResponse({"error": "Invalid request method."}, status=405)
+
+@login_required
+def delete_user(request):
+    """
+    View to delete the current user.
+    """
+    user = request.user
+    if request.method == 'POST':
+        user.delete()
+        return JsonResponse({"message": "User deleted successfully."}, status=200)
+    return JsonResponse({"error": "Invalid request method."}, status=405)
