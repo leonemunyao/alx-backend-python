@@ -11,24 +11,24 @@ class User(AbstractUser):
     """
 
     ROLE_CHOICES = [
-        ('admin', 'Admin'),
-        ('user', 'User'),
+        ("admin", "Admin"),
+        ("user", "User"),
     ]
 
     role = models.CharField(
         max_length=20,
         choices=ROLE_CHOICES,
-        default='user',
-        help_text="Role of the user in the application"
+        default="user",
+        help_text="Role of the user in the application",
     )
 
     def is_admin(self):
         """Check if the user has admin role."""
-        return self.role == 'admin'
-    
+        return self.role == "admin"
+
     def is_user(self):
         """Check if the user has user role."""
-        return self.role == 'user'
+        return self.role == "user"
 
     user_id = models.UUIDField(
         default=uuid.uuid4, editable=False, unique=True, primary_key=True
@@ -53,6 +53,7 @@ class Conversation(models.Model):
     Model representing a conversation between users
     Must contain the conversation ID.
     """
+
     conversation_id = models.AutoField(primary_key=True)
     participants = models.ManyToManyField(User, related_name="conversations")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -62,43 +63,97 @@ class Conversation(models.Model):
         return f"Conversation {self.conversation_id} with {self.participants.count()} participants"
 
 
+class UnreadMessagesManager(models.Manager):
+    """
+    Custom manager for filtering unread messages for a specific user.
+    """
+
+    def for_user(self, user):
+        """
+        Get all unread messages for a specific user.
+        Includes messages where the user is the receiver and messages in conversations they participate in.
+        """
+        return (
+            self.get_queryset()
+            .filter(
+                models.Q(receiver=user, read=False)
+                | models.Q(conversation__participants=user, read=False)
+            )
+            .exclude(sender=user)
+            .distinct()
+        )
+
+    def unread_direct_messages(self, user):
+        """
+        Get unread direct messages where the user is the receiver.
+        """
+        return (
+            self.get_queryset()
+            .filter(receiver=user, read=False)
+            .only("message_id", "sender__username", "content", "timestamp")
+        )
+
+    def unread_in_conversation(self, user, conversation):
+        """
+        Get unread messages in a specific conversation for a user.
+        """
+        return (
+            self.get_queryset()
+            .filter(conversation=conversation, read=False)
+            .exclude(sender=user)
+            .only("message_id", "sender__username", "content", "timestamp")
+        )
+
+    def mark_as_read(self, user, message_ids=None):
+        """
+        Mark messages as read for a user.
+        If message_ids is provided, mark only those messages.
+        Otherwise, mark all unread messages for the user.
+        """
+        queryset = self.for_user(user)
+        if message_ids:
+            queryset = queryset.filter(message_id__in=message_ids)
+        return queryset.update(read=True)
+
+
 class Message(models.Model):
     """Message model containing the sender, conversations."""
 
     message_id = models.AutoField(primary_key=True)
     sender = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name="messages"
+        User, on_delete=models.CASCADE, related_name="messages"
     )
     receiver = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name="received_messages",
         null=True,
-        blank=True
+        blank=True,
     )
     conversation = models.ForeignKey(
-        Conversation,
-        on_delete=models.CASCADE,
-        related_name="messages"
+        Conversation, on_delete=models.CASCADE, related_name="messages"
     )
 
     parent_message = models.ForeignKey(
-        'self',
+        "self",
         on_delete=models.CASCADE,
         related_name="replies",
         null=True,
-        blank=True
+        blank=True,
     )
 
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
     edited = models.BooleanField(default=False)
     edited_at = models.DateTimeField(null=True, blank=True)
+    read = models.BooleanField(default=False)
+
+    # Managers
+    objects = models.Manager()  # Default manager
+    unread = UnreadMessagesManager()  # Custom manager for unread messages
 
     class Meta:
-        ordering = ['timestamp']
+        ordering = ["timestamp"]
 
     def __str__(self):
         if self.receiver:
@@ -123,57 +178,51 @@ class MessageHistory(models.Model):
     Model to keep track of message edits.
     """
 
-    message =  models.ForeignKey(
-        Message,
-        on_delete=models.CASCADE,
-        related_name="edit_history"
+    message = models.ForeignKey(
+        Message, on_delete=models.CASCADE, related_name="edit_history"
     )
     old_content = models.TextField()
     edited_by = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name="edited_messages"
+        User, on_delete=models.CASCADE, related_name="edited_messages"
     )
     edited_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['-edited_at']
-        verbose_name = 'Message Edit History'
-        verbose_name_plural = 'Message Edit History'
-    
+        ordering = ["-edited_at"]
+        verbose_name = "Message Edit History"
+        verbose_name_plural = "Message Edit History"
+
     def __str__(self):
         return f"Edit of Message {self.message.message_id} by {self.edited_by.username} at {self.edited_at}"
-
 
 
 class Notification(models.Model):
     """
     Model for user notifications.
     """
+
     NOTIFICATION_TYPES = [
-        ('message', 'New Message'),
-        ('mention', 'Mention'),
-        ('like', 'Like'),
+        ("message", "New Message"),
+        ("mention", "Mention"),
+        ("like", "Like"),
     ]
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='notifications'
+        related_name="notifications",
     )
 
     message = models.ForeignKey(
         Message,
         on_delete=models.CASCADE,
-        related_name='notifications',
+        related_name="notifications",
         null=True,
-        blank=True
+        blank=True,
     )
 
     notification_type = models.CharField(
-        max_length=20,
-        choices=NOTIFICATION_TYPES,
-        default='message'
+        max_length=20, choices=NOTIFICATION_TYPES, default="message"
     )
 
     title = models.CharField(max_length=255)
@@ -182,7 +231,7 @@ class Notification(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['-created_at']
-    
+        ordering = ["-created_at"]
+
     def __str__(self):
         return f"Notification for {self.user.username}: {self.title} - {self.content[:50]}..."
