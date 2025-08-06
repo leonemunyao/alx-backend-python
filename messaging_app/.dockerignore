@@ -56,6 +56,11 @@ db.sqlite3-journal
 media/
 staticfiles/
 
+# Database files
+*.sqlite3
+*.db
+mysql_data/
+
 # Environment variables (security)
 .env
 .env.local

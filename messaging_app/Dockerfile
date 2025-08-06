@@ -7,6 +7,13 @@ ENV PYTHONUNBUFFERED 1
 # Set the working directory in the container
 WORKDIR /app
 
+# Install system dependencies for MySQL
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        default-libmysqlclient-dev \
+        gcc \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install system dependencies
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
