@@ -68,9 +68,9 @@ README.md
 docs/
 
 # Docker files (don't copy Docker files into container)
-Dockerfile
-.dockerignore
-docker-compose*.yml
+# Dockerfile
+# .dockerignore
+# docker-compose*.yml
 
 # Testing
 .coverage

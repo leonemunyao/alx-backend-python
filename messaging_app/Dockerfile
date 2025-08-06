@@ -15,6 +15,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . /app/
 
 # Expose port 8000 for the Django application
+# To run: docker run -p 8000:8000 messaging-app
 EXPOSE 8000
 
 # Run the Django development server
