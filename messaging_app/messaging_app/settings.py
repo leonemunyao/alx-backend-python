@@ -34,12 +34,14 @@ ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
     '3b34f6bc11b7.ngrok-free.app',  # My current ngrok URL
+    '0.0.0.0',  # Allow Docker to bind to all interfaces
 ]
 
 CSRF_TRUSTED_ORIGINS = [
     'https://3b34f6bc11b7.ngrok-free.app',
     'http://localhost:8000',
     'http://127.0.0.1:8000',
+    'http://0,0,0,0:8000',
 ]
 
 
