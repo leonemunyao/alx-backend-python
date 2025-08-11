@@ -15,6 +15,10 @@ echo "=== CLUSTER STATUS ==="
 kubectl get nodes
 
 echo ""
+echo "=== AVAILABLE NODES ==="
+kubectl get nodes
+
+echo ""
 echo "Kubernetes cluster setup complete!"
 echo "Dashboard can be accessed via: minikube dashboard."
 
