@@ -35,6 +35,8 @@ ALLOWED_HOSTS = [
     '127.0.0.1',
     '3b34f6bc11b7.ngrok-free.app',  # My current ngrok URL
     '0.0.0.0',  # Allow Docker to bind to all interfaces
+    'messaging-app.local',
+    '192.168.49.2' # Actual minikube IP
 ]
 
 CSRF_TRUSTED_ORIGINS = [
@@ -106,8 +108,8 @@ DATABASES = {
         'NAME': os.getenv('DB_NAME'),
         'USER': os.getenv('DB_USER'),
         'PASSWORD': os.getenv('DB_PASSWORD'),
-        'HOST': os.getenv('DB_HOST', 'localhost'),
-        'PORT': os.getenv('DB_PORT', '3306'),
+        'HOST': os.getenv('DB_HOST'),
+        'PORT': os.getenv('DB_PORT'),
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
             'charset': 'utf8mb4',
