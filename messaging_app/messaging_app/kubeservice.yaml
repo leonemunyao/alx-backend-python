@@ -1,0 +1,54 @@
+# Blue Service (Current/Stable version)
+apiVersion: v1
+kind: Service
+metadata:
+  name: messaging-app-blue-service
+  labels:
+    app: messaging-app
+    version: blue
+spec:
+  type: ClusterIP
+  selector:
+    app: messaging-app
+    version: blue
+  ports:
+  - port: 8000
+    targetPort: 8000
+    protocol: TCP
+
+---
+# Green Service (New version for testing)
+apiVersion: v1
+kind: Service
+metadata:
+  name: messaging-app-green-service
+  labels:
+    app: messaging-app
+    version: green
+spec:
+  type: ClusterIP
+  selector:
+    app: messaging-app
+    version: green
+  ports:
+  - port: 8000
+    targetPort: 8000
+    protocol: TCP
+
+---
+# Main Service (Traffic routing - starts with blue)
+apiVersion: v1
+kind: Service
+metadata:
+  name: messaging-app-service
+  labels:
+    app: messaging-app
+spec:
+  type: ClusterIP
+  selector:
+    app: messaging-app
+    version: blue  # Initially points to blue
+  ports:
+  - port: 8000
+    targetPort: 8000
+    protocol: TCP

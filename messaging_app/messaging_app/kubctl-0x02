@@ -1,0 +1,192 @@
+#!/bin/bash
+
+echo "Starting Blue-Green Deployment Script"
+echo "========================================"
+
+# Colors for output
+BLUE='\033[0;34m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+# Function to check if deployment is ready
+check_deployment_ready() {
+    local deployment_name=$1
+    local timeout=300
+    
+    echo "⏳ Waiting for deployment $deployment_name to be ready..."
+    kubectl wait --for=condition=available deployment/$deployment_name --timeout=${timeout}s
+    
+    if [ $? -eq 0 ]; then
+        echo "Deployment $deployment_name is ready"
+        return 0
+    else
+        echo "Deployment $deployment_name failed to become ready"
+        return 1
+    fi
+}
+
+# Function to check pod logs for errors
+check_pod_logs() {
+    local version=$1
+    echo "Checking logs for $version version..."
+    
+    # Get pod names for the version
+    pods=$(kubectl get pods -l app=messaging-app,version=$version -o jsonpath='{.items[*].metadata.name}')
+    
+    for pod in $pods; do
+        echo "Checking logs for pod: $pod"
+        
+        # Check for common error patterns
+        error_count=$(kubectl logs $pod | grep -i -E "(error|exception|failed|traceback)" | wc -l)
+        
+        if [ $error_count -gt 0 ]; then
+            echo "Found $error_count potential errors in $pod:"
+            kubectl logs $pod | grep -i -E "(error|exception|failed|traceback)" | head -5
+        else
+            echo "No obvious errors found in $pod"
+        fi
+        
+        echo "Last 10 lines of logs from $pod:"
+        kubectl logs $pod --tail=10
+        echo "---"
+    done
+}
+
+# Function to switch traffic
+switch_traffic() {
+    local target_version=$1
+    echo "Switching traffic to $target_version version..."
+    
+    kubectl patch service messaging-app-service -p '{"spec":{"selector":{"version":"'$target_version'"}}}'
+    
+    if [ $? -eq 0 ]; then
+        echo "Traffic switched to $target_version version"
+    else
+        echo "Failed to switch traffic to $target_version version"
+        exit 1
+    fi
+}
+
+# Step 1: Build Blue and Green Docker images
+echo ""
+echo "${BLUE}Step 1: Building Docker images...${NC}"
+
+# Set minikube docker environment
+eval $(minikube docker-env)
+
+# Build blue version (current)
+echo "Building blue version..."
+docker build -t messaging-app:blue .
+
+# Create a simple version indicator for green (simulate new version)
+echo 'ENV VERSION=green' >> Dockerfile.tmp
+cat Dockerfile >> Dockerfile.tmp
+docker build -f Dockerfile.tmp -t messaging-app:green .
+rm Dockerfile.tmp
+
+echo "Docker images built successfully"
+
+# Step 2: Deploy Blue version first
+echo ""
+echo "${BLUE}Step 2: Deploying Blue version (current stable)...${NC}"
+
+kubectl apply -f blue_deployment.yaml
+kubectl apply -f kubeservice.yaml
+
+check_deployment_ready "messaging-app-blue"
+
+# Step 3: Verify Blue deployment
+echo ""
+echo "${BLUE}Step 3: Verifying Blue deployment...${NC}"
+
+kubectl get pods -l version=blue
+check_pod_logs "blue"
+
+# Step 4: Deploy Green version
+echo ""
+echo "${GREEN}Step 4: Deploying Green version (new version)...${NC}"
+
+kubectl apply -f green_deployment.yaml
+
+check_deployment_ready "messaging-app-green"
+
+# Step 5: Verify Green deployment
+echo ""
+echo "${GREEN}Step 5: Verifying Green deployment...${NC}"
+
+kubectl get pods -l version=green
+check_pod_logs "green"
+
+# Step 6: Test Green version before switching traffic
+echo ""
+echo "${GREEN}Step 6: Testing Green version...${NC}"
+
+# Port forward to green service for testing
+kubectl port-forward service/messaging-app-green-service 8001:8000 &
+PORT_FORWARD_PID=$!
+
+sleep 5
+
+# Test green version
+echo "Testing green version on port 8001..."
+response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8001/ || echo "000")
+
+if [ "$response" = "200" ]; then
+    echo "Green version responding correctly (HTTP $response)"
+    GREEN_HEALTHY=true
+else
+    echo "Green version not responding correctly (HTTP $response)"
+    GREEN_HEALTHY=false
+fi
+
+# Kill port forward
+kill $PORT_FORWARD_PID 2>/dev/null
+
+# Step 7: Switch traffic if green is healthy
+echo ""
+if [ "$GREEN_HEALTHY" = true ]; then
+    echo "${YELLOW}Step 7: Green version is healthy. Switching traffic...${NC}"
+    switch_traffic "green"
+    
+    echo "Blue-Green deployment completed successfully!"
+    echo "Traffic is now routed to the green (new) version"
+else
+    echo "${RED}Step 7: Green version is unhealthy. Keeping traffic on blue version.${NC}"
+    echo "Blue-Green deployment failed - staying on blue version"
+fi
+
+# Step 8: Final status
+echo ""
+echo "Final Deployment Status:"
+echo "=========================="
+
+echo "Blue version pods:"
+kubectl get pods -l version=blue
+
+echo ""
+echo "Green version pods:"
+kubectl get pods -l version=green
+
+echo ""
+echo "Services:"
+kubectl get services -l app=messaging-app
+
+echo ""
+echo "Current traffic routing:"
+kubectl get service messaging-app-service -o jsonpath='{.spec.selector}' | jq .
+
+echo ""
+echo "Available endpoints:"
+echo "- Main service: http://messaging-app.local/"
+echo "- Blue service: kubectl port-forward service/messaging-app-blue-service 8000:8000"
+echo "- Green service: kubectl port-forward service/messaging-app-green-service 8001:8000"
+
+echo ""
+echo "To manually switch between versions:"
+echo "Switch to blue:  kubectl patch service messaging-app-service -p '{\"spec\":{\"selector\":{\"version\":\"blue\"}}}'"
+echo "Switch to green: kubectl patch service messaging-app-service -p '{\"spec\":{\"selector\":{\"version\":\"green\"}}}'"
+
+echo ""
+echo "Blue-Green deployment script completed!"
