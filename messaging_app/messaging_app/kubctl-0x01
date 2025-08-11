@@ -1,0 +1,149 @@
+#!/bin/bash
+
+echo "🚀 Starting Kubernetes scaling and load testing script..."
+echo "=================================================="
+
+# Function to check if a command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Function to wait for pods to be ready
+wait_for_pods() {
+    echo "Waiting for pods to be ready..."
+    kubectl wait --for=condition=ready pod -l app=messaging-app --timeout=300s
+    if [ $? -eq 0 ]; then
+        echo "All pods are ready!"
+    else
+        echo "Timeout waiting for pods to be ready"
+        exit 1
+    fi
+}
+
+# Step 1: Scale the deployment to 3 replicas
+echo ""
+echo "Step 1: Scaling Django app deployment to 3 replicas..."
+kubectl scale deployment messaging-app-deployment --replicas=3
+
+if [ $? -eq 0 ]; then
+    echo "Scaling command executed successfully"
+else
+    echo "Failed to scale deployment"
+    exit 1
+fi
+
+# Step 2: Wait for pods to be ready
+wait_for_pods
+
+# Step 3: Verify multiple pods are running
+echo ""
+echo "Step 3: Verifying multiple pods are running..."
+echo "Current pod status:"
+kubectl get pods -l app=messaging-app -o wide
+
+echo ""
+echo "Deployment status:"
+kubectl get deployment messaging-app-deployment
+
+# Step 4: Monitor resource usage
+echo ""
+echo "Step 4: Monitoring resource usage..."
+echo "Current resource usage:"
+
+# Check if metrics server is available
+kubectl top nodes >/dev/null 2>&1
+if [ $? -eq 0 ]; then
+    kubectl top pods -l app=messaging-app
+    echo ""
+    kubectl top nodes
+else
+    echo "Metrics server not available. Installing metrics server..."
+    kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+    echo "Waiting for metrics server to be ready (this may take a few minutes)..."
+    sleep 30
+    echo "Resource usage will be available after metrics server is fully ready."
+fi
+
+# Step 5: Install wrk if not present
+echo ""
+echo "Step 4: Checking/Installing load testing tools..."
+
+if ! command_exists wrk; then
+    echo "Installing wrk load testing tool..."
+    sudo apt update
+    sudo apt install -y wrk
+fi
+
+# Step 6: Set up port forwarding for load testing
+echo ""
+echo "Step 6: Setting up port forwarding for load testing..."
+
+# Kill any existing port-forward processes
+pkill -f "kubectl port-forward"
+
+# Start port forwarding in background
+kubectl port-forward service/messaging-app-service 8000:8000 &
+PORT_FORWARD_PID=$!
+
+# Wait for port forwarding to be ready
+echo "Waiting for port forwarding to be ready..."
+sleep 5
+
+# Check if port is accessible
+curl -s http://localhost:8000 >/dev/null
+if [ $? -eq 0 ]; then
+    echo "Port forwarding is ready"
+else
+    echo "Port forwarding might take a moment to be ready"
+fi
+
+# Step 7: Perform load testing
+echo ""
+echo "Step 7: Performing load testing with wrk..."
+echo "Testing with 10 connections for 30 seconds..."
+
+# Test basic endpoint
+wrk -t4 -c10 -d30s http://localhost:8000/
+
+echo ""
+echo "Testing API endpoint (if available)..."
+wrk -t4 -c10 -d15s http://localhost:8000/api/
+
+# Step 8: Monitor resource usage during load
+echo ""
+echo "Step 8: Resource usage after load testing..."
+
+# Check resource usage again
+kubectl top pods -l app=messaging-app 2>/dev/null || echo "Metrics not yet available"
+
+# Step 9: Show final pod status
+echo ""
+echo "Step 9: Final pod status and logs..."
+kubectl get pods -l app=messaging-app
+
+echo ""
+echo "Recent logs from one of the pods:"
+POD_NAME=$(kubectl get pods -l app=messaging-app -o jsonpath="{.items[0].metadata.name}")
+kubectl logs $POD_NAME --tail=10
+
+# Step 10: Cleanup
+echo ""
+echo "Step 10: Cleaning up..."
+kill $PORT_FORWARD_PID 2>/dev/null
+
+echo ""
+echo "================================================================"
+echo "Scaling and load testing completed successfully!"
+echo ""
+echo "Summary:"
+echo "- Scaled deployment to 3 replicas"
+echo "- Verified multiple pods are running"
+echo "- Performed load testing with wrk"
+echo "- Monitored resource usage"
+echo ""
+echo "To manually check:"
+echo "  kubectl get pods -l app=messaging-app"
+echo "  kubectl top pods -l app=messaging-app"
+echo "  kubectl describe deployment messaging-app-deployment"
+echo "================================================================"
+
