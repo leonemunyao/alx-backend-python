@@ -1,0 +1,20 @@
+#!/bin/bash
+
+echo "Starting Kubernetes cluster with minikube..."
+minikube start --driver=docker
+
+echo "Waiting for Kubernetes cluster to be ready..."
+sleep 10
+
+echo "Kubernetes cluster is ready."
+
+echo "=== CLUSTER INFO ==="
+kubectl cluster-info
+
+echo "=== CLUSTER STATUS ==="
+kubectl get nodes
+
+echo ""
+echo "Kubernetes cluster setup complete!"
+echo "Dashboard can be accessed via: minikube dashboard."
+
