@@ -22,10 +22,6 @@ pipeline {
             steps {
                 echo 'Setting up Python virtual environment...'
                 sh '''
-                    # Ensure Python 3 is installed
-                    apt-get update
-                    apt-get install -y python3 python3-venv python3-dev
-
                     cd messaging_app
                     python3 -m venv ${VIRTUAL_ENV}
                     source ${VIRTUAL_ENV}/bin/activate
