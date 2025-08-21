@@ -4,6 +4,8 @@ pipeline {
     environment {
         PYTHON_VERSION = '3.10'
         VIRTUAL_ENV = 'venv'
+        DOCKER_HUB_REPO = 'leonemunyao/messaging-app'
+        IMAGE_TAG = "${BUILD_NUMBER}"
     }
     
     stages {
@@ -23,9 +25,9 @@ pipeline {
                     cd messaging_app
                     python3 -m venv ${VIRTUAL_ENV}
                     source ${VIRTUAL_ENV}/bin/activate
-                    pip install --upgrade pip
-                    pip install -r requirements.txt
-                    pip install pytest pytest-html pytest-cov pytest-django
+                    pip3 install --upgrade pip
+                    pip3 install -r messaging_app/requirements.txt
+                    pip3 install pytest pytest-html pytest-cov pytest-django
                 '''
             }
         }
@@ -100,6 +102,47 @@ pipeline {
                     cd messaging_app
                     docker build -t messaging-app:${BUILD_NUMBER} .
                     docker tag messaging-app:${BUILD_NUMBER} messaging-app:latest
+
+                    echo "Docker images created:"
+                    docker images | grep messaging-app
+                '''
+            }
+        }
+
+        stage('Push Docker Image to Hub') {
+            steps {
+                echo 'Pushing Docker image to Docker Hub...'
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', 
+                                                    usernameVariable: 'DOCKER_HUB_USER', 
+                                                    passwordVariable: 'DOCKER_HUB_PASS')]) {
+                        sh '''
+                            echo "Logging into Docker Hub as ${DOCKER_HUB_USER}..."
+                            echo "${DOCKER_HUB_PASS}" | docker login -u "${DOCKER_HUB_USER}" --password-stdin
+                            
+                            echo "Pushing image: ${DOCKER_HUB_REPO}:${IMAGE_TAG}"
+                            docker push ${DOCKER_HUB_REPO}:${IMAGE_TAG}
+                            
+                            echo "Pushing image: ${DOCKER_HUB_REPO}:latest"
+                            docker push ${DOCKER_HUB_REPO}:latest
+                            
+                            echo "Successfully pushed Docker images to Docker Hub!"
+                        '''
+                    }
+                }
+            }
+        }
+        
+        stage('Cleanup Docker Images') {
+            steps {
+                echo 'Cleaning up local Docker images to save space...'
+                sh '''
+                    echo "Removing local images to save disk space..."
+                    docker rmi ${DOCKER_HUB_REPO}:${IMAGE_TAG} || true
+                    docker rmi ${DOCKER_HUB_REPO}:latest || true
+                    
+                    echo "Current Docker images:"
+                    docker images
                 '''
             }
         }
@@ -120,10 +163,18 @@ pipeline {
         
         success {
             echo 'Pipeline executed successfully!'
+            echo "Docker image pushed to: ${DOCKER_HUB_REPO}:${IMAGE_TAG}"
+            echo "Docker image also available as: ${DOCKER_HUB_REPO}:latest"
         }
         
         failure {
             echo 'Pipeline failed!'
+
+            sh '''
+                docker rmi ${DOCKER_HUB_REPO}:${IMAGE_TAG} || true
+                docker rmi ${DOCKER_HUB_REPO}:latest || true
+                docker logout || true
+            '''
         }
         
         unstable {

@@ -15,3 +15,11 @@ pycodestyle==2.14.0
 PyJWT==2.9.0
 python-dotenv==1.1.1
 sqlparse==0.5.3
+
+
+# Testing dependencies
+pytest==7.4.4
+pytest-django==4.8.0
+pytest-html==4.1.1
+pytest-cov==4.1.0
+flake8==6.1.0
