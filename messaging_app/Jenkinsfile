@@ -2,7 +2,7 @@ pipeline {
     agent any
     
     environment {
-        PYTHON_VERSION = '3.10'
+        PYTHON_VERSION = '3'
         VIRTUAL_ENV = 'venv'
         DOCKER_HUB_REPO = 'leonemunyao/messaging-app'
         IMAGE_TAG = "${BUILD_NUMBER}"
@@ -22,6 +22,10 @@ pipeline {
             steps {
                 echo 'Setting up Python virtual environment...'
                 sh '''
+                    # Ensure Python 3 is installed
+                    apt-get update
+                    apt-get install -y python3 python3-venv python3-dev
+
                     cd messaging_app
                     python3 -m venv ${VIRTUAL_ENV}
                     source ${VIRTUAL_ENV}/bin/activate
@@ -38,8 +42,8 @@ pipeline {
                 sh '''
                     cd messaging_app
                     source ${VIRTUAL_ENV}/bin/activate
-                    python -m flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || true
-                    python -m flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics || true
+                    python3 -m flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || true
+                    python3 -m flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics || true
                 '''
             }
         }
@@ -59,7 +63,7 @@ pipeline {
                     export DJANGO_SETTINGS_MODULE=messaging_app.settings
 
                     # Run Django system checks
-                    python manage.py check
+                    python3 manage.py check
                     
                     # Run tests with coverage and HTML report
                     pytest --html=test-report.html --self-contained-html --cov=. --cov-report=html --cov-report=xml --junit-xml=test-results.xml || true
