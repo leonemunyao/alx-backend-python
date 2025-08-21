@@ -1,0 +1,133 @@
+pipeline {
+    agent any
+    
+    environment {
+        PYTHON_VERSION = '3.10'
+        VIRTUAL_ENV = 'venv'
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Checking out code from GitHub...'
+                git branch: 'main', 
+                    credentialsId: 'github-credentials', 
+                    url: 'https://github.com/leonemunyao/alx-backend-python.git'
+            }
+        }
+        
+        stage('Setup Environment') {
+            steps {
+                echo 'Setting up Python virtual environment...'
+                sh '''
+                    cd messaging_app
+                    python3 -m venv ${VIRTUAL_ENV}
+                    source ${VIRTUAL_ENV}/bin/activate
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
+                    pip install pytest pytest-html pytest-cov pytest-django
+                '''
+            }
+        }
+        
+        stage('Lint Code') {
+            steps {
+                echo 'Running code quality checks...'
+                sh '''
+                    cd messaging_app
+                    source ${VIRTUAL_ENV}/bin/activate
+                    python -m flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || true
+                    python -m flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics || true
+                '''
+            }
+        }
+        
+        stage('Run Tests') {
+            steps {
+                echo 'Running Django tests with pytest...'
+                sh '''
+                    cd messaging_app
+                    source ${VIRTUAL_ENV}/bin/activate
+
+                    # Load environment variables from .env file
+                    set -a
+                    source .env
+                    set +a
+                    
+                    export DJANGO_SETTINGS_MODULE=messaging_app.settings
+
+                    # Run Django system checks
+                    python manage.py check
+                    
+                    # Run tests with coverage and HTML report
+                    pytest --html=test-report.html --self-contained-html --cov=. --cov-report=html --cov-report=xml --junit-xml=test-results.xml || true
+                '''
+            }
+        }
+        
+        stage('Generate Reports') {
+            steps {
+                echo 'Generating test reports...'
+
+                publishTestResults testResultsPattern: 'messaging_app/test-results.xml'
+                
+                publishHTML([
+                    allowMissing: false,
+                    alwaysLinkToLastBuild: true,
+                    keepAll: true,
+                    reportDir: 'messaging_app',
+                    reportFiles: 'test-report.html',
+                    reportName: 'Test Report',
+                    reportTitles: 'Django Messaging App Test Report'
+                ])
+                
+                publishHTML([
+                    allowMissing: false,
+                    alwaysLinkToLastBuild: true,
+                    keepAll: true,
+                    reportDir: 'messaging_app/htmlcov',
+                    reportFiles: 'index.html',
+                    reportName: 'Coverage Report',
+                    reportTitles: 'Code Coverage Report'
+                ])
+            }
+        }
+        
+        stage('Build Docker Image') {
+            steps {
+                echo 'Building Docker image...'
+                sh '''
+                    cd messaging_app
+                    docker build -t messaging-app:${BUILD_NUMBER} .
+                    docker tag messaging-app:${BUILD_NUMBER} messaging-app:latest
+                '''
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo 'Pipeline execution completed'
+            
+            sh '''
+                cd messaging_app
+                rm -rf ${VIRTUAL_ENV}
+            '''
+            
+            archiveArtifacts artifacts: 'messaging_app/test-report.html, messaging_app/test-results.xml', 
+                           allowEmptyArchive: true
+        }
+        
+        success {
+            echo 'Pipeline executed successfully!'
+        }
+        
+        failure {
+            echo 'Pipeline failed!'
+        }
+        
+        unstable {
+            echo 'Pipeline completed with warnings'
+        }
+    }
+}
