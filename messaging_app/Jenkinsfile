@@ -53,16 +53,28 @@ pipeline {
         stage('Run Tests') {
             steps {
                 echo 'Running Django tests with pytest...'
+                withCredentials([
+                string(credentialsId: 'django-secret-key', variable: 'SECRET_KEY'),
+                string(credentialsId: 'db-name', variable: 'DB_NAME'),
+                string(credentialsId: 'db-user', variable: 'DB_USER'),
+                string(credentialsId: 'db-password', variable: 'DB_PASSWORD'),
+                string(credentialsId: 'db-host', variable: 'DB_HOST'),
+                string(credentialsId: 'db-port', variable: 'DB_PORT'),
+                string(credentialsId: 'db-root-password', variable: 'DB_ROOT_PASSWORD')
+            ]) {
                 sh '''
                     cd messaging_app
                     . ${VIRTUAL_ENV}/bin/activate
-
-                    # Load environment variables from .env file
-                    set -a
-                    . .env
-                    set +a
                     
                     export DJANGO_SETTINGS_MODULE=messaging_app.settings
+                    export SECRET_KEY="${SECRET_KEY}"
+                    export DB_NAME="${DB_NAME}"
+                    export DB_USER="${DB_USER}"
+                    export DB_PASSWORD="${DB_PASSWORD}"
+                    export DB_HOST="${DB_HOST}"
+                    export DB_PORT="${DB_PORT}"
+                    export DB_ROOT_PASSWORD="${DB_ROOT_PASSWORD}"
+                    export DEBUG="True"
 
                     # Run Django system checks
                     python3 manage.py check
@@ -70,6 +82,7 @@ pipeline {
                     # Run tests with coverage and HTML report
                     pytest --html=test-report.html --self-contained-html --cov=. --cov-report=html --cov-report=xml --junit-xml=test-results.xml || true
                 '''
+                }
             }
         }
         
