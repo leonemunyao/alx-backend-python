@@ -1,5 +1,3 @@
-from django.test import TestCase
-
 import pytest
 from django.test import TestCase, Client
 from django.urls import reverse
@@ -74,3 +72,19 @@ class TestMessagingAppPytest:
             password='testpass123'
         )
         assert str(user) == 'pytest_user'
+
+    def test_conversation_model(self):
+        """Test conversation model"""
+        user1 = User.objects.create_user(
+            username='user1', email='user1@test.com', password='pass123'
+        )
+        user2 = User.objects.create_user(
+            username='user2', email='user2@test.com', password='pass123'
+        )
+        
+        conversation = Conversation.objects.create()
+        conversation.participants.add(user1, user2)
+        
+        assert conversation.participants.count() == 2
+        assert user1 in conversation.participants.all()
+        assert user2 in conversation.participants.all()

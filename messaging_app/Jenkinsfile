@@ -90,7 +90,7 @@ pipeline {
             steps {
                 echo 'Generating test reports...'
 
-                publishTestResults testResultsPattern: 'messaging_app/test-results.xml'
+                junit testResultsPattern: 'messaging_app/test-results.xml'
                 
                 publishHTML([
                     allowMissing: false,
