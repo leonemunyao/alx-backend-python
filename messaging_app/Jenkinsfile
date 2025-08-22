@@ -62,7 +62,7 @@ pipeline {
                     export DEBUG="True"
 
                     # Run Django system checks
-                    python3 manage.py check
+                    python3 manage.py check --settings=messaging_app.test_settings
                     
                     # Run tests with coverage and HTML report
                     pytest --html=test-report.html --self-contained-html --cov=. --cov-report=html --cov-report=xml --junit-xml=test-results.xml || true
