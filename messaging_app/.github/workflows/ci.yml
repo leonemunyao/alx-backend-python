@@ -187,4 +187,3 @@ jobs:
 
     - name: Image digest
       run: echo ${{ steps.build.outputs.digest }}
-    
