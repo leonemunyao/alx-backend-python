@@ -1,0 +1,190 @@
+name: Django Messaging App CI/CD
+
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: rootpassword
+          MYSQL_DATABASE: messaging_app_test
+          MYSQL_USER: messaging_user
+          MYSQL_PASSWORD: messaging_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+
+    env:
+      DJANGO_SETTINGS_MODULE: messaging_app.ci_settings
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      DB_NAME: messaging_app_test
+      DB_USER: messaging_user
+      DB_PASSWORD: messaging_password
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DEBUG: False
+
+    steps:
+
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+ 
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y mysql-client libmysqlclient-dev pkg-config
+
+
+    - name: Install Python dependencies
+      run: |
+        cd messaging_app
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-django pytest-cov pytest-html flake8
+
+
+    - name: Wait for MySQL to be ready
+      run: |
+        echo "Waiting for MySQL to be ready..."
+        until mysqladmin ping -h 127.0.0.1 -P 3306 -u root -prootpassword --silent; do
+          echo "MySQL not ready yet, waiting..."
+          sleep 3
+        done
+        echo "MySQL is ready!"
+
+
+    - name: Set up test database
+      run: |
+        mysql -h 127.0.0.1 -P 3306 -u root -prootpassword -e "
+          CREATE DATABASE IF NOT EXISTS messaging_app_test;
+          GRANT ALL PRIVILEGES ON messaging_app_test.* TO 'messaging_user'@'%' IDENTIFIED BY 'messaging_password';
+          GRANT ALL PRIVILEGES ON test_messaging_app_test.* TO 'messaging_user'@'%';
+          FLUSH PRIVILEGES;
+          SHOW DATABASES;
+        "
+
+
+    - name: Run Django system checks
+      run: |
+        cd messaging_app
+        python manage.py check --settings=messaging_app.ci_settings
+
+ 
+    - name: Run database migrations
+      run: |
+        cd messaging_app
+        python manage.py migrate --settings=messaging_app.ci_settings
+
+
+    - name: Run code linting
+      run: |
+        cd messaging_app
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || true
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics || true
+
+
+    - name: Run Django tests
+      run: |
+        cd messaging_app
+        pytest --cov=. --cov-report=html --cov-report=xml --cov-report=term --junit-xml=test-results.xml -v
+
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results-${{ github.run_id }}
+        path: |
+          messaging_app/test-results.xml
+          messaging_app/htmlcov/
+          messaging_app/.coverage
+
+
+    - name: Upload coverage to Codecov
+      if: success()
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./messaging_app/coverage.xml
+        directory: ./messaging_app/
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+ 
+  build-and-deploy:
+    name: Build and Deploy
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ secrets.DOCKER_USERNAME }}/messaging-app
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./messaging_app
+        file: ./messaging_app/Dockerfile
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Image digest
+      run: echo ${{ steps.build.outputs.digest }}
+    
